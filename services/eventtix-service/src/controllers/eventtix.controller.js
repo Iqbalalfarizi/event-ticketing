@@ -16,6 +16,13 @@ const findAll = async (req, res, next) => {
 const findOne = async (req, res, next) => {
   try {
     const event = await eventService.getDetailEvent(req.params.id);
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: 'Event not found!',
+      });
+    }
     return res.status(200).json({
       success: true,
       message: 'Success get event data',
@@ -47,6 +54,13 @@ const update = async (req, res, next) => {
 
     const updatedEvent = await eventService.updateEvent(id, payload);
 
+    if (!updatedEvent) {
+      return res.status(404).json({
+        success: false,
+        message: 'Event not found!',
+      });
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Event updated successfully',
@@ -55,9 +69,32 @@ const update = async (req, res, next) => {
   } catch (error) {}
 };
 
+const remove = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const deletedEvent = await eventService.deleteEvent(id);
+
+    if (!deletedEvent) {
+      return res.status(404).json({
+        success: false,
+        message: 'Event not found!',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Event deleted successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   findAll,
   findOne,
   create,
   update,
+  remove,
 };

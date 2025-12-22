@@ -15,11 +15,7 @@ const getEvents = async () => {
     console.warn('Redis unavailable, fallback to DB');
   }
 
-  const events = await eventsRepo.findAll({
-    attributes: {
-      exclude: ['total_kuota'],
-    },
-  });
+  const events = await eventsRepo.findAll();
 
   try {
     await redis.set(cacheKey, JSON.stringify(events), 'EX', TTL);
@@ -40,15 +36,12 @@ const getDetailEvent = async (id) => {
     }
   } catch (error) {}
 
-  const event = await eventsRepo.findById(id, {
-    attributes: {
-      exclude: ['total_kuota'],
-    },
-  });
-
-  if (!event) throw new Error('Event Not Found!');
+  const event = await eventsRepo.findById(id);
 
   try {
+    if (!event) {
+      return null;
+    }
     await redis.set(cacheKey, JSON.stringify(events), 'EX', TTL);
   } catch (error) {}
 
@@ -68,7 +61,7 @@ const createEvent = async (payload) => {
 const updateEvent = async (id, payload) => {
   const event = await eventsRepo.findById(id);
 
-  if (!event) throw new Error('Evend Not Found!');
+  if (!event) return null;
 
   await eventsRepo.update(id, payload);
 
@@ -76,9 +69,17 @@ const updateEvent = async (id, payload) => {
   return eventsRepo.findById(id);
 };
 
+const deleteEvent = async (id) => {
+  const event = await eventsRepo.remove(id);
+  if (!event) return null;
+
+  await redis.del('events:all');
+};
+
 module.exports = {
   getEvents,
   getDetailEvent,
   createEvent,
   updateEvent,
+  deleteEvent,
 };

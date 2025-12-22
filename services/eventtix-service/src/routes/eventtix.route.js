@@ -11,5 +11,6 @@ router.post('/', validate(createEventSchema), eventController.create);
 router.get('/', eventController.findAll);
 router.get('/:id', eventController.findOne);
 router.put('/:id', validate(updateEventSchema), eventController.update);
+router.delete('/:id', eventController.remove);
 
 module.exports = router;
