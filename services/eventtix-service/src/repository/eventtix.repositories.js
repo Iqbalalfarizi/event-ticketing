@@ -1,4 +1,3 @@
-const { where } = require('sequelize');
 const { Event } = require('../models');
 
 const findAll = () =>

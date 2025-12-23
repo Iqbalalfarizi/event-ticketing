@@ -74,6 +74,10 @@ const deleteEvent = async (id) => {
   if (!event) return null;
 
   await redis.del('events:all');
+
+  return {
+    message: 'success deleted event',
+  };
 };
 
 module.exports = {
