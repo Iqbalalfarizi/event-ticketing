@@ -1,30 +1,44 @@
 const BookingRepo = require('../repository/bookingtix.repositories');
-const producer = require('../utils/kafka');
+const { getProducer, waitForConnection } = require('../utils/kafka');
 
 const booking = async (payload) => {
-  const { userId, eventId, qty } = payload;
+  try {
+    const { userId, eventId, qty } = payload;
 
-  await BookingRepo.booking({
-    userId: userId,
-    eventId: eventId,
-    qty: qty,
-    status: 'PAID',
-  });
+    console.log({
+      userId: userId,
+      eventId: eventId,
+      qty: qty,
+    });
 
-  producer.produce(
-    'ticket_issued',
-    null,
-    Buffer.from(
-      JSON.stringify({
-        eventId,
-        qty,
-      })
-    )
-  );
+    await BookingRepo.booking({
+      userId: userId,
+      eventId: eventId,
+      qty: qty,
+      status: 'PAID',
+    });
+
+    await waitForConnection();
+
+    const producer = getProducer();
+
+    producer.produce(
+      'ticket_issued',
+      null,
+      Buffer.from(JSON.stringify({ eventId, qty }))
+    );
+    producer.flush(1000, (err) => {
+      if (err) {
+        console.error('❌ Kafka flush failed:', err);
+      }
+    });
+
+    return {
+      message: 'Booking success',
+    };
+  } catch (error) {
+    console.log('error :', error.message);
+  }
 };
-
-setInterval(() => {
-  producer.poll();
-}, 100);
 
 module.exports = { booking };
