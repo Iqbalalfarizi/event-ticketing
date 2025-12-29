@@ -9,8 +9,4 @@ app.use(express.json());
 app.use(cors());
 app.use('/events', eventRoutes);
 
-sequelize
-  .sync({ force: false }) // ⚠️ DEV ONLY
-  .catch(console.error);
-
 module.exports = app;

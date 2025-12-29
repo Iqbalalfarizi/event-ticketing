@@ -1,9 +1,10 @@
 const eventsRepo = require('../repository/eventtix.repositories');
-const redis = require('../utils/redis');
+const { getRedis } = require('../utils/redis');
 
 const TTL = Number(process.env.REDIS_TTL) || 60;
 
 const getEvents = async () => {
+  const redis = getRedis();
   const cacheKey = 'events:all';
   try {
     const cached = await redis.get(cacheKey);
@@ -27,6 +28,7 @@ const getEvents = async () => {
 };
 
 const getDetailEvent = async (id) => {
+  const redis = getRedis();
   const cacheKey = `events:${id}`;
   try {
     const cached = await redis.get(cacheKey);
@@ -42,13 +44,14 @@ const getDetailEvent = async (id) => {
     if (!event) {
       return null;
     }
-    await redis.set(cacheKey, JSON.stringify(events), 'EX', TTL);
+    await redis.set(cacheKey, JSON.stringify(event), 'EX', TTL);
   } catch (error) {}
 
   return event;
 };
 
 const createEvent = async (payload) => {
+  const redis = getRedis();
   const data = {
     ...payload,
     sisa_kuota: payload.total_kuota,
@@ -59,6 +62,7 @@ const createEvent = async (payload) => {
 };
 
 const updateEvent = async (id, payload) => {
+  const redis = getRedis();
   const event = await eventsRepo.findById(id);
 
   if (!event) return null;
@@ -70,6 +74,8 @@ const updateEvent = async (id, payload) => {
 };
 
 const deleteEvent = async (id) => {
+  const redis = getRedis();
+
   const event = await eventsRepo.remove(id);
   if (!event) return null;
 
