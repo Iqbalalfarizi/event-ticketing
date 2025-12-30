@@ -25,7 +25,7 @@ const booking = async (payload) => {
     producer.produce(
       'ticket_issued',
       null,
-      Buffer.from(JSON.stringify({ eventId, qty }))
+      Buffer.from(JSON.stringify({ eventId, qty, userId }))
     );
     producer.flush(1000, (err) => {
       if (err) {
