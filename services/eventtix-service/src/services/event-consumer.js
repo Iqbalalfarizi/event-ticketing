@@ -1,41 +1,65 @@
-const { Kafka } = require('@confluentinc/kafka-javascript');
+const { KafkaConsumer } = require('@confluentinc/kafka-javascript');
 const eventsRepo = require('../repository/eventtix.repositories');
+const { getRedis } = require('../utils/redis');
 
-const kafka = new Kafka({
-  brokers: ['kafka:9092'],
+const consumer = new KafkaConsumer({
+  'bootstrap.servers': process.env.KAFKA_BROKERS,
+  'group.id': process.env.KAFKA_GROUP_ID,
+  'client.id': process.env.KAFKA_CLIENT_ID,
+  'auto.offset.reset': 'earliest',
 });
 
-const consumer = kafka.consumer({
-  groupId: 'event-service',
-});
+let redis;
 
 const consumerRun = async () => {
-  await consumer.connect();
-  await consumer.subscribe({ topic: 'ticket_issued' });
+  console.log('Starting event consumer .........');
 
-  await consumer.run({
-    eachMessage: async ({ message }) => {
-      try {
-        const { eventId, qty } = JSON.parse(message.value.toString());
+  consumer.connect();
 
-        const event = await eventsRepo.findById(eventId);
-        if (!event) return;
+  redis = await getRedis();
 
-        const newQuota = event.sisa_kuota - qty;
-        if (newQuota < 0) {
-          console.warn(`Quota not enough for event ${eventId}`);
-          return;
-        }
+  consumer.on('ready', () => {
+    console.log('✅ Event consumer ready...');
 
-        await eventsRepo.update(event.id, {
-          sisa_kuota: newQuota,
-        });
-      } catch (err) {
-        console.error('Failed process ticket_issued event', err);
-        throw err;
+    consumer.subscribe(['ticket_issued']);
+
+    consumer.consume();
+  });
+
+  // ⬇️ LISTENER MESSAGE
+  consumer.on('data', async (message) => {
+    console.log('🚀 EVENT CONSUMER TERPANGGIL');
+
+    try {
+      const payload = JSON.parse(message.value.toString());
+      console.log('data event consumer:', payload);
+
+      const { eventId, qty } = payload;
+
+      const event = await eventsRepo.findById(eventId);
+      if (!event) return;
+
+      const newQuota = event.sisa_kuota - qty;
+      if (newQuota < 0) {
+        console.warn(`Quota not enough for event ${eventId}`);
+        return;
       }
-    },
+      await redis.del('events:all');
+      const result = await eventsRepo.update(event.id, {
+        sisa_kuota: newQuota,
+      });
+      if (!result) {
+        console.warn(`Event ${eventId} not found`);
+        return;
+      }
+    } catch (err) {
+      console.error('Failed process ticket_issued event', err);
+    }
+  });
+
+  consumer.on('event.error', (err) => {
+    console.error('❌ Kafka ERROR:', err);
   });
 };
 
-consumerRun();
+module.exports = consumerRun;
