@@ -37,7 +37,10 @@ const consumerRun = async () => {
       const { eventId, qty } = payload;
 
       const event = await eventsRepo.findById(eventId);
-      if (!event) return;
+      if (!event) {
+        console.warn(`Event ${eventId} is not found`);
+        return;
+      }
 
       const newQuota = event.sisa_kuota - qty;
       if (newQuota < 0) {
@@ -45,13 +48,9 @@ const consumerRun = async () => {
         return;
       }
       await redis.del('events:all');
-      const result = await eventsRepo.update(event.id, {
+      await eventsRepo.update(event.id, {
         sisa_kuota: newQuota,
       });
-      if (!result) {
-        console.warn(`Event ${eventId} not found`);
-        return;
-      }
     } catch (err) {
       console.error('Failed process ticket_issued event', err);
     }
